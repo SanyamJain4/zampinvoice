@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     llm_timeout_s: float = 60.0
     llm_max_retries: int = 2
+    # Opt-in: if the AI provider is down/overloaded or rejects the model, use the offline parser instead (clearly labelled), rather than failing.
+    llm_fallback_offline: bool = False
 
     # OCR
     ocr_min_chars_per_page: int = 40

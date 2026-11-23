@@ -107,3 +107,19 @@ def test_404_names_the_model_and_tells_how_to_fix_it(monkeypatch):
     assert len(calls) == 1 and e.value.code == "MODEL_NOT_FOUND"  # not retried
     assert "'foo'" in e.value.user_message and "LLM_MODEL" in e.value.user_message and "models/foo is not found" in e.value.user_message
     assert "test-key" not in e.value.user_message
+
+
+def test_fallback_to_offline_parser_is_opt_in_labelled_and_not_for_config_errors(monkeypatch):
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: resp(503))
+    # default: outage is a hard failure, never replaced by other data
+    with pytest.raises(ExtractionError):
+        ai_extractor.extract_invoice(PAGES, cfg(llm_max_retries=1), sleep=lambda s: None)
+    # opt-in: degrades to the offline parser with a visible label + warning
+    res = ai_extractor.extract_invoice(PAGES, cfg(llm_max_retries=1, llm_fallback_offline=True), sleep=lambda s: None)
+    assert res.method == "heuristic-parser:fallback" and res.provider == "heuristic"
+    assert any("FALLBACK" in n and "HTTP 503" in n for n in res.notes)
+    # a rejected API key is a configuration problem and stays loud even with fallback on
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: resp(401))
+    with pytest.raises(ExtractionError) as e:
+        ai_extractor.extract_invoice(PAGES, cfg(llm_fallback_offline=True), sleep=lambda s: None)
+    assert e.value.code == "API_KEY_REJECTED"

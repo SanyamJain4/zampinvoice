@@ -214,7 +214,7 @@ def _raise_for_status(r: httpx.Response, provider: str = "", model: str = "") ->
 _CALLERS = {"anthropic": _call_anthropic, "openai": _call_openai, "gemini": _call_gemini}
 
 
-def extract_invoice(pages: list[list[str]], settings: Settings, sleep=time.sleep) -> ExtractionResult:
+def _extract_with_provider(pages: list[list[str]], settings: Settings, sleep=time.sleep) -> ExtractionResult:
     provider, model = resolve_provider(settings)
 
     if provider == "heuristic":
@@ -253,3 +253,24 @@ def extract_invoice(pages: list[list[str]], settings: Settings, sleep=time.sleep
         f"AI extraction failed after {attempts} attempts ({last_err}). The invoice was not processed; please retry.",
         "AI_UNAVAILABLE",
     )
+
+
+# Provider-side problems that may be bridged by the offline parser. Configuration errors (missing / rejected key) stay loud.
+FALLBACK_CODES = {"AI_UNAVAILABLE", "MODEL_NOT_FOUND", "AI_REQUEST_REJECTED"}
+
+
+def extract_invoice(pages: list[list[str]], settings: Settings, sleep=time.sleep) -> ExtractionResult:
+    """LLM extraction with bounded retries. With LLM_FALLBACK_OFFLINE=true a provider outage degrades to the offline
+    rule-based parser; this is never silent: the run is labelled `heuristic-parser:fallback` with a warning, and the
+    parser only reads text that is really in the document (it never invents values)."""
+    try:
+        return _extract_with_provider(pages, settings, sleep)
+    except ExtractionError as e:
+        if not (settings.llm_fallback_offline and e.code in FALLBACK_CODES):
+            raise
+        raw = heuristic_extractor.extract(pages, settings.buyer_name, settings.buyer_tax_id)
+        return ExtractionResult(
+            build_extracted(raw), "heuristic", "rule-based-parser", "heuristic-parser:fallback",
+            notes=[f"FALLBACK: the AI provider could not be used ({e.user_message}) so the offline rule-based parser was used instead. "
+                   "Review the extracted values; fallback is enabled by LLM_FALLBACK_OFFLINE."],
+        )
