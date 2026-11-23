@@ -140,7 +140,7 @@ def _call_anthropic(settings: Settings, model: str, user: str) -> dict:
         },
         timeout=settings.llm_timeout_s,
     )
-    _raise_for_status(r)
+    _raise_for_status(r, 'anthropic', model)
     for block in r.json().get("content", []):
         if block.get("type") == "tool_use":
             return block["input"]
@@ -160,7 +160,7 @@ def _call_openai(settings: Settings, model: str, user: str) -> dict:
         },
         timeout=settings.llm_timeout_s,
     )
-    _raise_for_status(r)
+    _raise_for_status(r, 'openai', model)
     return json.loads(r.json()["choices"][0]["message"]["content"])
 
 
@@ -175,7 +175,7 @@ def _call_gemini(settings: Settings, model: str, user: str) -> dict:
         },
         timeout=settings.llm_timeout_s,
     )
-    _raise_for_status(r)
+    _raise_for_status(r, 'gemini', model)
     return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
 
 
@@ -183,13 +183,32 @@ class _Transient(Exception):
     pass
 
 
-def _raise_for_status(r: httpx.Response) -> None:
+def _provider_message(r: httpx.Response) -> str:
+    """Short, key-free error text from the provider's JSON body (for diagnosis only)."""
+    try:
+        body = r.json()
+        err = body.get("error", body) if isinstance(body, dict) else {}
+        msg = err.get("message") if isinstance(err, dict) else str(err)
+        return (msg or "")[:160]
+    except Exception:
+        return ""
+
+
+def _raise_for_status(r: httpx.Response, provider: str = "", model: str = "") -> None:
     if r.status_code in (429, 500, 502, 503, 504, 529):
         raise _Transient(f"HTTP {r.status_code}")
+    if r.status_code == 404:
+        raise ExtractionError(
+            f"The AI provider ({provider}) does not recognise the model '{model}' (HTTP 404). Set LLM_MODEL to a model your "
+            f"{provider} account can use and redeploy. Provider said: {_provider_message(r) or 'not found'}",
+            "MODEL_NOT_FOUND",
+        )
     if r.status_code in (401, 403):
         raise ExtractionError("The AI provider rejected the API key. Please check the key configured on the server.", "API_KEY_REJECTED")
     if r.status_code >= 400:
-        raise ExtractionError(f"The AI provider could not process the request (HTTP {r.status_code}).", "AI_REQUEST_REJECTED")
+        raise ExtractionError(
+            f"The AI provider ({provider}, model '{model}') could not process the request (HTTP {r.status_code}). "
+            f"{_provider_message(r)}".strip(), "AI_REQUEST_REJECTED")
 
 
 _CALLERS = {"anthropic": _call_anthropic, "openai": _call_openai, "gemini": _call_gemini}

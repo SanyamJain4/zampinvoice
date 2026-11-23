@@ -97,3 +97,13 @@ def test_model_output_is_normalised_and_missing_never_invented(monkeypatch):
     ex = ai_extractor.extract_invoice(PAGES, cfg()).extracted
     assert ex.invoice_number is None and "invoice_number" in ex.missing_fields
     assert ex.grand_total == 118000 and ex.evidence["grand_total"].page == 1
+
+
+def test_404_names_the_model_and_tells_how_to_fix_it(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: calls.append(1) or resp(404, {"error": {"message": "models/foo is not found"}}))
+    with pytest.raises(ExtractionError) as e:
+        ai_extractor.extract_invoice(PAGES, cfg(llm_model="foo"), sleep=lambda s: None)
+    assert len(calls) == 1 and e.value.code == "MODEL_NOT_FOUND"  # not retried
+    assert "'foo'" in e.value.user_message and "LLM_MODEL" in e.value.user_message and "models/foo is not found" in e.value.user_message
+    assert "test-key" not in e.value.user_message
