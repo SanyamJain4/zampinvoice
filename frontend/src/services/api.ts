@@ -55,6 +55,7 @@ const qs = (params: Record<string, string | number | boolean | undefined | null>
 export const api = {
   health: () => request<{ status: string; ocr_available: boolean; extraction_provider: string; extraction_model: string }>('/health'),
   settings: () => request<AppSettings>('/settings'),
+  testAi: () => request<{ ok: boolean; provider: string | null; model: string | null; message: string; code?: string; latency_ms?: number; extracted?: Record<string, string | null> }>('/settings/test-ai', { method: 'POST' }),
   metrics: () => request<Metrics>('/dashboard/metrics'),
   trends: (days = 14) => request<Trends>(`/dashboard/trends${qs({ days })}`),
 

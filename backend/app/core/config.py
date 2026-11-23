@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     llm_timeout_s: float = 60.0
     llm_max_retries: int = 2
+    llm_thinking_level: str = "low"  # Gemini 3.x only (low|medium|high): extraction needs speed, not deep reasoning
     # Opt-in: if the AI provider is down/overloaded or rejects the model, use the offline parser instead (clearly labelled), rather than failing.
     llm_fallback_offline: bool = False
 

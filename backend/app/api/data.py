@@ -38,6 +38,12 @@ def health(db: Session = Depends(get_db)):
             "extraction_provider": provider, "extraction_model": model, "time": datetime.now(timezone.utc).isoformat()}
 
 
+@router.post("/settings/test-ai")
+def test_ai_connection():
+    """Live check of the configured AI provider/model/key (one tiny request, no invoice involved)."""
+    return ai_extractor.test_connection(settings)
+
+
 @router.get("/settings")
 def get_app_settings():
     try:

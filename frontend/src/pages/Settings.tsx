@@ -9,10 +9,17 @@ export default function SettingsPage() {
   const q = useQuery({ queryKey: ['settings'], queryFn: api.settings })
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [aiTest, setAiTest] = useState<Awaited<ReturnType<typeof api.testAi>> | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
   if (q.isLoading) return <PageLoading />
   if (q.isError) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />
   const s = q.data!
   const offline = s.extraction.provider === 'heuristic'
+
+  const testAi = async () => {
+    setAiBusy(true); setAiTest(null)
+    try { setAiTest(await api.testAi()) } catch (e) { setAiTest({ ok: false, provider: null, model: null, message: e instanceof Error ? e.message : 'The test could not be run.' }) } finally { setAiBusy(false) }
+  }
 
   const reset = async () => {
     if (!window.confirm('Delete all processed invoices, runs and audit history and reload the original vendors / POs? This cannot be undone.')) return
@@ -32,6 +39,14 @@ export default function SettingsPage() {
               <Kv k="API keys configured" v={Object.entries(s.extraction.configured_keys).map(([k, v]) => <Badge key={k} tone={v ? 'green' : 'slate'} className="ml-1">{k}</Badge>)} />
               <Kv k="Retries / timeout" v={`${s.extraction.max_retries} retries · ${s.extraction.timeout_s}s`} />
             </dl>
+            <div className="mt-4">
+              <Button variant="secondary" size="sm" onClick={testAi} loading={aiBusy} data-testid="test-ai">Test AI connection</Button>
+              {aiTest && (
+                <p className={`mt-2 rounded-lg p-3 text-xs ${aiTest.ok ? 'bg-ok-50 text-ok-700' : 'bg-bad-50 text-bad-700'}`} role="status" data-testid="test-ai-result">
+                  {aiTest.ok ? '✓ ' : '✗ '}{aiTest.message}{aiTest.latency_ms ? ` (${aiTest.latency_ms} ms)` : ''}
+                </p>
+              )}
+            </div>
             {s.extraction.error && <p className="mt-3 rounded-lg bg-bad-50 p-3 text-xs text-bad-700">{s.extraction.error}</p>}
             {offline && <p className="mt-3 rounded-lg bg-warn-50 p-3 text-xs text-warn-700">No LLM key is set, so invoices are read by the built-in rule-based parser. Add <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code> or <code>GEMINI_API_KEY</code> to the backend environment and restart to enable AI extraction. Decisions are identical either way: the rules never use an LLM.</p>}
           </CardBody>

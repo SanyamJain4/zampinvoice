@@ -10,6 +10,7 @@ Design rules
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -161,22 +162,60 @@ def _call_openai(settings: Settings, model: str, user: str) -> dict:
         timeout=settings.llm_timeout_s,
     )
     _raise_for_status(r, 'openai', model)
-    return json.loads(r.json()["choices"][0]["message"]["content"])
+    return _parse_json_text(r.json()["choices"][0]["message"]["content"])
+
+
+def _gemini_major(model: str) -> int:
+    m = re.match(r"(?:models/)?gemini-(\d+)", model or "")
+    return int(m.group(1)) if m else 0
+
+
+def _gemini_body(settings: Settings, model: str, user: str) -> dict:
+    """Request body. Gemini 3.x: `temperature` is deprecated (ignored now, HTTP 400 on future models) so it is omitted,
+    JSON is requested through the prompt + tolerant parsing, and thinking is kept low for speed. Older models keep the
+    classic temperature + responseMimeType settings."""
+    body: dict = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT + "\nReturn ONLY a JSON object with this shape (no prose, no code fences):\n" + json.dumps(SCHEMA_HINT)}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
+    }
+    if _gemini_major(model) >= 3:
+        body["generationConfig"] = {"thinkingConfig": {"thinkingLevel": settings.llm_thinking_level}}
+    else:
+        body["generationConfig"] = {"temperature": 0, "responseMimeType": "application/json"}
+    return body
+
+
+def _parse_json_text(text: str) -> dict:
+    """Parse a JSON object even if the model wrapped it in ```json fences or added a sentence around it."""
+    t = text.strip()
+    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.I)
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        a, b = t.find("{"), t.rfind("}")
+        if a == -1 or b <= a:
+            raise
+        return json.loads(t[a : b + 1])
 
 
 def _call_gemini(settings: Settings, model: str, user: str) -> dict:
     r = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": settings.gemini_api_key or ""},
-        json={
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT + "\nReturn JSON with this shape:\n" + json.dumps(SCHEMA_HINT)}]},
-            "contents": [{"role": "user", "parts": [{"text": user}]}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
-        },
+        json=_gemini_body(settings, model, user),
         timeout=settings.llm_timeout_s,
     )
-    _raise_for_status(r, 'gemini', model)
-    return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+    _raise_for_status(r, "gemini", model)
+    data = r.json()
+    cands = data.get("candidates") or []
+    if not cands:
+        reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates returned")
+        raise ExtractionError(f"Gemini returned no answer for this document ({reason}).", "AI_REQUEST_REJECTED")
+    parts = (cands[0].get("content") or {}).get("parts") or []
+    text = "".join(p.get("text", "") for p in parts if not p.get("thought"))  # skip thought parts, join the rest
+    if not text.strip():
+        raise ValueError(f"empty answer (finishReason={cands[0].get('finishReason')})")
+    return _parse_json_text(text)
 
 
 class _Transient(Exception):
@@ -196,7 +235,8 @@ def _provider_message(r: httpx.Response) -> str:
 
 def _raise_for_status(r: httpx.Response, provider: str = "", model: str = "") -> None:
     if r.status_code in (429, 500, 502, 503, 504, 529):
-        raise _Transient(f"HTTP {r.status_code}")
+        detail = _provider_message(r)
+        raise _Transient(f"HTTP {r.status_code}" + (f": {detail}" if detail else ""))
     if r.status_code == 404:
         raise ExtractionError(
             f"The AI provider ({provider}) does not recognise the model '{model}' (HTTP 404). Set LLM_MODEL to a model your "
@@ -274,3 +314,26 @@ def extract_invoice(pages: list[list[str]], settings: Settings, sleep=time.sleep
             notes=[f"FALLBACK: the AI provider could not be used ({e.user_message}) so the offline rule-based parser was used instead. "
                    "Review the extracted values; fallback is enabled by LLM_FALLBACK_OFFLINE."],
         )
+
+
+def test_connection(settings: Settings) -> dict:
+    """One real round-trip through the exact extraction path on a tiny made-up invoice (no retries)."""
+    t0 = time.time()
+    s = settings.model_copy(update={"llm_max_retries": 0, "llm_fallback_offline": False})
+    try:
+        provider, model = resolve_provider(s)
+    except ExtractionError as e:
+        return {"ok": False, "provider": None, "model": None, "code": e.code, "message": e.user_message}
+    if provider == "heuristic":
+        return {"ok": True, "provider": provider, "model": model, "message": "No AI key is configured, so the offline parser is active. Nothing to test."}
+    sample = [["Acme Traders Pvt Ltd", "Invoice No: T-1001", "PO Number: PO-1", "Currency: INR", "Grand Total 118.00"]]
+    try:
+        res = _extract_with_provider(sample, s, sleep=lambda _x: None)
+    except ExtractionError as e:
+        return {"ok": False, "provider": provider, "model": model, "code": e.code, "message": e.user_message, "latency_ms": int((time.time() - t0) * 1000)}
+    ex = res.extracted
+    ok = (ex.invoice_number or "").upper() == "T-1001"
+    return {"ok": ok, "provider": provider, "model": model, "latency_ms": int((time.time() - t0) * 1000),
+            "message": "Connected: the model answered and the structured output was valid." if ok else
+            f"The model answered but returned unexpected values (invoice_number={ex.invoice_number!r}).",
+            "extracted": {"invoice_number": ex.invoice_number, "po_number": ex.po_number, "grand_total": None if ex.grand_total is None else str(ex.grand_total)}}

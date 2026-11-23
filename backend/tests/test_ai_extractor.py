@@ -123,3 +123,74 @@ def test_fallback_to_offline_parser_is_opt_in_labelled_and_not_for_config_errors
     with pytest.raises(ExtractionError) as e:
         ai_extractor.extract_invoice(PAGES, cfg(llm_fallback_offline=True), sleep=lambda s: None)
     assert e.value.code == "API_KEY_REJECTED"
+
+
+# ---------------------------------------------------------------- Gemini request / response handling
+def gcfg(**kw) -> Settings:
+    return cfg(llm_provider="gemini", gemini_api_key="g-test-key", anthropic_api_key=None, **kw)
+
+
+def gemini_ok(text_parts, extra=None):
+    return resp(200, {"candidates": [{"content": {"parts": text_parts}, "finishReason": "STOP"}], **(extra or {})})
+
+
+def test_gemini3_request_omits_deprecated_temperature_and_uses_low_thinking(monkeypatch):
+    sent = {}
+
+    def fake(url, headers=None, json=None, timeout=None):
+        sent.update(url=url, json=json, headers=headers)
+        return gemini_ok([{"text": __import__("json").dumps(GOOD)}])
+
+    monkeypatch.setattr(ai_extractor.httpx, "post", fake)
+    res = ai_extractor.extract_invoice(PAGES, gcfg(llm_model="gemini-3.8-flash"))
+    gc = sent["json"]["generationConfig"]
+    assert "temperature" not in gc and "responseMimeType" not in gc and gc["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert sent["url"].endswith("/models/gemini-3.8-flash:generateContent") and sent["headers"]["x-goog-api-key"] == "g-test-key"
+    assert "systemInstruction" in sent["json"] and res.extracted.invoice_number == "A-1"
+
+
+def test_gemini2_keeps_classic_settings(monkeypatch):
+    sent = {}
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda url, headers=None, json=None, timeout=None: sent.update(j=json) or gemini_ok([{"text": __import__("json").dumps(GOOD)}]))
+    ai_extractor.extract_invoice(PAGES, gcfg(llm_model="gemini-2.5-flash"))
+    assert sent["j"]["generationConfig"] == {"temperature": 0, "responseMimeType": "application/json"}
+
+
+def test_gemini_answer_parsing_is_tolerant(monkeypatch):
+    import json as _j
+    fenced = "```json\n" + _j.dumps(GOOD) + "\n```"
+    # thought parts are skipped, several text parts are joined, code fences / surrounding prose are tolerated
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: gemini_ok([{"text": "thinking...", "thought": True}, {"text": "Here you go:\n" + fenced[:40]}, {"text": fenced[40:] + "\nDone."}]))
+    assert ai_extractor.extract_invoice(PAGES, gcfg(llm_model="gemini-3.8-flash")).extracted.invoice_number == "A-1"
+
+
+def test_gemini_blocked_or_empty_answers_give_clear_errors(monkeypatch):
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: resp(200, {"promptFeedback": {"blockReason": "SAFETY"}}))
+    with pytest.raises(ExtractionError) as e:
+        ai_extractor.extract_invoice(PAGES, gcfg(llm_model="gemini-3.8-flash"), sleep=lambda s: None)
+    assert "SAFETY" in e.value.user_message
+
+
+def test_transient_error_keeps_the_providers_explanation(monkeypatch):
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: resp(503, {"error": {"code": 503, "message": "The model is overloaded. Please try again later.", "status": "UNAVAILABLE"}}))
+    with pytest.raises(ExtractionError) as e:
+        ai_extractor.extract_invoice(PAGES, gcfg(llm_model="gemini-3.8-flash", llm_max_retries=1), sleep=lambda s: None)
+    assert "HTTP 503" in e.value.user_message and "overloaded" in e.value.user_message
+
+
+def test_connection_test_reports_success_and_failure(monkeypatch):
+    import json as _j
+    ok_payload = {**GOOD, "invoice_number": "T-1001"}
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: gemini_ok([{"text": _j.dumps(ok_payload)}]))
+    r = ai_extractor.test_connection(gcfg(llm_model="gemini-3.8-flash"))
+    assert r["ok"] is True and r["provider"] == "gemini" and r["extracted"]["invoice_number"] == "T-1001"
+    monkeypatch.setattr(ai_extractor.httpx, "post", lambda *a, **k: resp(404, {"error": {"message": "model gone"}}))
+    r = ai_extractor.test_connection(gcfg(llm_model="gemini-9"))
+    assert r["ok"] is False and r["code"] == "MODEL_NOT_FOUND" and "gemini-9" in r["message"]
+    assert "g-test-key" not in str(r)
+    assert ai_extractor.test_connection(Settings(_env_file=None, llm_provider="heuristic"))["ok"] is True
+
+
+def test_test_ai_endpoint(client):
+    r = client.post("/api/settings/test-ai")
+    assert r.status_code == 200 and r.json()["ok"] is True and r.json()["provider"] == "heuristic"
