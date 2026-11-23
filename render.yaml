@@ -1,0 +1,24 @@
+# Render Blueprint: one web service = API + built UI on a single URL.
+# New + -> Blueprint -> pick this repo. No CORS or VITE_API_URL needed (same origin).
+services:
+  - type: web
+    name: invoiceiq
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free            # free: sleeps after ~15 min idle, data resets on restart (sample data reloads). Use 'starter' + a disk for persistence.
+    healthCheckPath: /api/health
+    envVars:
+      - key: LLM_PROVIDER
+        value: auto
+      # Optional: set ONE key in the Render dashboard (never commit keys). Without any key the offline parser is used.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+    # Persistent data (paid plans only): uncomment, and keep DATABASE_URL/UPLOAD_DIR on /data (the image default)
+    # disk:
+    #   name: invoiceiq-data
+    #   mountPath: /data
+    #   sizeGB: 1

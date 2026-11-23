@@ -1,0 +1,47 @@
+po_number,line_no,item_description,sku,quantity,unit_price,tax_rate
+PO-205,1,Software Licenses (Enterprise),APX-LIC-01,10,5000,18
+PO-206,1,Cloud Hosting Subscription (Annual),DC-HOST-12,10,5000,18
+PO-212,1,Annual Maintenance Contract - Servers,APX-AMC-01,4,15000,18
+PO-310,1,Freight Services - Bengaluru to Mumbai,BWL-FRT-01,20,5000,18
+PO-318,1,Warehousing Services (per pallet-month),BWL-WH-01,100,300,18
+PO-340,1,A4 Paper Reams (500 sheets),CED-A4-500,200,300,18
+PO-340,2,Ballpoint Pens (Box of 50),CED-PEN-50,40,250,18
+PO-355,1,Digital Campaign Management - Nov,FUS-DCM-11,1,50000,18
+PO-355,2,Creative Design Retainer,FUS-CDR-01,1,25000,18
+PO-358,1,Print Collateral Design Pack,FUS-PCD-01,10,4000,18
+PO-360,1,Managed Database Instance,DC-DB-02,6,8000,18
+PO-370,1,Housekeeping Services (monthly),EFM-HK-01,1,40000,18
+PO-370,2,Pantry Supplies Replenishment,EFM-PNT-01,1,15000,18
+PO-370,3,Garden Maintenance,EFM-GRD-01,1,10000,18
+PO-375,1,Strategy Workshop (per day),HCG-WS-01,5,20000,0
+PO-390,1,Annual Software Subscription - Team Plan,LUM-SUB-TP,5,12000,18
+PO-392,1,Developer Seat Licenses,LUM-DEV-01,25,2000,18
+PO-410,1,Corrugated Packaging Boxes,IPP-BOX-L,500,40,18
+PO-420,1,Precision Bearings Set,GIP-BRG-10,100,250,0
+PO-430,1,CCTV Maintenance Contract (quarterly),JSS-CCTV-Q,1,45000,18
+PO-450,1,Hex Bolt M8 x 40 (Box of 100),KHT-HB-M8,20,450,18
+PO-450,2,Hex Nut M8 (Box of 100),KHT-HN-M8,20,220,18
+PO-450,3,Flat Washer M8 (Box of 200),KHT-FW-M8,15,180,18
+PO-450,4,Spring Washer M8 (Box of 200),KHT-SW-M8,15,195,18
+PO-450,5,Allen Key Set (9 pcs),KHT-AK-09,10,340,18
+PO-450,6,Cordless Drill 18V,KHT-CD-18,4,6200,18
+PO-450,7,Drill Bit Set HSS (19 pcs),KHT-DB-19,8,780,18
+PO-450,8,Angle Grinder 4 inch,KHT-AG-04,3,3450,18
+PO-450,9,Cutting Disc 4 inch (Pack of 25),KHT-CT-04,12,560,18
+PO-450,10,Welding Rod 3.15mm (5 kg),KHT-WR-31,10,890,18
+PO-450,11,Safety Gloves (Pair),KHT-SG-01,60,95,18
+PO-450,12,Safety Helmet,KHT-SH-01,25,310,18
+PO-450,13,Safety Goggles,KHT-SG-02,30,140,18
+PO-450,14,Measuring Tape 8m,KHT-MT-08,20,175,18
+PO-450,15,Spirit Level 600mm,KHT-SL-60,8,420,18
+PO-450,16,Adjustable Spanner 12 inch,KHT-AS-12,10,515,18
+PO-450,17,Combination Plier 8 inch,KHT-CP-08,12,365,18
+PO-450,18,Screwdriver Set (12 pcs),KHT-SD-12,10,640,18
+PO-450,19,Hammer 500g,KHT-HM-05,12,330,18
+PO-450,20,PVC Insulation Tape (Pack of 10),KHT-IT-10,25,260,18
+PO-450,21,Cable Tie 200mm (Pack of 100),KHT-CZ-20,40,85,18
+PO-450,22,Threaded Rod M10 x 1m,KHT-TR-10,30,190,18
+PO-450,23,Rawl Plug Assortment (Box),KHT-RP-01,18,230,18
+PO-450,24,Lubricant Spray 400ml,KHT-LS-40,24,205,18
+PO-500,1,Consulting Services (per hour),HCG-CON-01,100,1000,0
+PO-501,1,Industrial Fasteners Assortment Kit,KHT-FAS-01,100,1000,0

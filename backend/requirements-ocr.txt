@@ -1,0 +1,5 @@
+# Optional: OCR for scanned (image-only) PDFs. Adds roughly 200 MB (OpenCV, onnxruntime, RapidOCR).
+-r requirements.txt
+rapidocr-onnxruntime==1.3.25
+numpy
+pillow

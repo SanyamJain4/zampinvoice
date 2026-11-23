@@ -1,0 +1,325 @@
+{
+  "generated_on": "2026-11-23",
+  "note": "Process files in run_order against a freshly seeded database. 'expected' is what the deterministic pipeline must produce.",
+  "invoices": [
+    {
+      "file": "invoices/01_valid_apex.pdf",
+      "title": "Valid invoice (happy path)",
+      "run_order": 1,
+      "depends_on": null,
+      "layout": "classic",
+      "scanned": false,
+      "vendor": "Apex Technologies Pvt Ltd",
+      "invoice_number": "APX/2026/1187",
+      "po_number": "PO-205",
+      "currency": "INR",
+      "total": "59000.00",
+      "expected": {
+        "decision": "APPROVED"
+      }
+    },
+    {
+      "file": "invoices/02_duplicate_bluewave.pdf",
+      "title": "Duplicate of an already-approved invoice",
+      "run_order": 2,
+      "depends_on": null,
+      "layout": "modern",
+      "scanned": false,
+      "vendor": "Bluewave Logistics Ltd",
+      "invoice_number": "BWL-7781",
+      "po_number": "PO-310",
+      "currency": "INR",
+      "total": "118000.00",
+      "expected": {
+        "decision": "REJECTED",
+        "rules": {
+          "R08": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/03_amount_mismatch_delta.pdf",
+      "title": "Amount mismatch (price above PO)",
+      "run_order": 3,
+      "depends_on": null,
+      "layout": "gst",
+      "scanned": false,
+      "vendor": "Delta Cloud Services Pvt Ltd",
+      "invoice_number": "DCS-2611-044",
+      "po_number": "PO-206",
+      "currency": "INR",
+      "total": "64900.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R11": "FAIL",
+          "R09": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/04_partial_horizon_inv2.pdf",
+      "title": "Partial billing: 35,000 of 100,000 (40,000 already approved)",
+      "run_order": 4,
+      "depends_on": null,
+      "layout": "us",
+      "scanned": false,
+      "vendor": "Horizon Consulting Group LLP",
+      "invoice_number": "HCG-0052",
+      "po_number": "PO-500",
+      "currency": "INR",
+      "total": "35000.00",
+      "expected": {
+        "decision": "APPROVED",
+        "remaining_after": "25000.00"
+      }
+    },
+    {
+      "file": "invoices/04b_partial_horizon_inv3_exceeds.pdf",
+      "title": "Partial billing: 30,000 but only 25,000 left (run AFTER 04)",
+      "run_order": 5,
+      "depends_on": "04_partial_horizon_inv2.pdf",
+      "layout": "us",
+      "scanned": false,
+      "vendor": "Horizon Consulting Group LLP",
+      "invoice_number": "HCG-0058",
+      "po_number": "PO-500",
+      "currency": "INR",
+      "total": "30000.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R10": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/05_missing_number_cedar.pdf",
+      "title": "Missing invoice number",
+      "run_order": 6,
+      "depends_on": null,
+      "layout": "modern",
+      "scanned": false,
+      "vendor": "Cedar Office Supplies LLP",
+      "invoice_number": null,
+      "po_number": "PO-340",
+      "currency": "INR",
+      "total": "82600.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R01": "REVIEW"
+        }
+      }
+    },
+    {
+      "file": "invoices/06a_scanned_valid_fusion.pdf",
+      "title": "Scanned (image-only) valid invoice - OCR",
+      "run_order": 7,
+      "depends_on": null,
+      "layout": "classic",
+      "scanned": true,
+      "vendor": "Fusion Marketing Agency",
+      "invoice_number": "FMA-1042",
+      "po_number": "PO-355",
+      "currency": "INR",
+      "total": "88500.00",
+      "expected": {
+        "decision": "APPROVED",
+        "ocr": true,
+        "note": "Outcome depends on OCR reading every value correctly."
+      }
+    },
+    {
+      "file": "invoices/06b_scanned_mismatch_fusion.pdf",
+      "title": "Scanned invoice with a price mismatch - OCR",
+      "run_order": 8,
+      "depends_on": null,
+      "layout": "gst",
+      "scanned": true,
+      "vendor": "Fusion Marketing Agency",
+      "invoice_number": "FMA-1049",
+      "po_number": "PO-358",
+      "currency": "INR",
+      "total": "54280.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "ocr": true,
+        "rules": {
+          "R11": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/07_wrong_vendor_lumen.pdf",
+      "title": "Wrong vendor for the PO",
+      "run_order": 9,
+      "depends_on": null,
+      "layout": "gst",
+      "scanned": false,
+      "vendor": "Lumen Software Solutions Pvt Ltd",
+      "invoice_number": "LSS-8841",
+      "po_number": "PO-205",
+      "currency": "INR",
+      "total": "70800.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R04": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/08_balance_exceeded_keystone.pdf",
+      "title": "PO balance exceeded (25,225 vs 25,000 left; price within 1% tolerance)",
+      "run_order": 10,
+      "depends_on": null,
+      "layout": "us",
+      "scanned": false,
+      "vendor": "Keystone Hardware Traders",
+      "invoice_number": "KHT-3377",
+      "po_number": "PO-501",
+      "currency": "INR",
+      "total": "25225.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R10": "FAIL",
+          "R11": "PASS"
+        }
+      }
+    },
+    {
+      "file": "invoices/09_currency_mismatch_globex.pdf",
+      "title": "Currency mismatch (USD invoice vs INR PO)",
+      "run_order": 11,
+      "depends_on": null,
+      "layout": "us",
+      "scanned": false,
+      "vendor": "Globex Industrial Parts Inc",
+      "invoice_number": "GIP-90211",
+      "po_number": "PO-420",
+      "currency": "USD",
+      "total": "300.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R05": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/10_bundled_evergreen.pdf",
+      "title": "Bundled line items that cannot be mapped",
+      "run_order": 12,
+      "depends_on": null,
+      "layout": "classic",
+      "scanned": false,
+      "vendor": "Evergreen Facility Management Pvt Ltd",
+      "invoice_number": "EFM/NOV/2026/31",
+      "po_number": "PO-370",
+      "currency": "INR",
+      "total": "76700.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R16": "REVIEW"
+        }
+      }
+    },
+    {
+      "file": "invoices/11_inactive_vendor_indigo.pdf",
+      "title": "Inactive vendor",
+      "run_order": 13,
+      "depends_on": null,
+      "layout": "gst",
+      "scanned": false,
+      "vendor": "Indigo Print & Packaging Ltd",
+      "invoice_number": "IPP-5521",
+      "po_number": "PO-410",
+      "currency": "INR",
+      "total": "23600.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R02": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/12_blocked_vendor_jupiter.pdf",
+      "title": "Blocked vendor",
+      "run_order": 14,
+      "depends_on": null,
+      "layout": "modern",
+      "scanned": false,
+      "vendor": "Jupiter Security Systems Pvt Ltd",
+      "invoice_number": "JSS-2290",
+      "po_number": "PO-430",
+      "currency": "INR",
+      "total": "53100.00",
+      "expected": {
+        "decision": "REJECTED",
+        "rules": {
+          "R02": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/13_prompt_injection_apex.pdf",
+      "title": "Prompt-injection text + closed PO",
+      "run_order": 15,
+      "depends_on": null,
+      "layout": "classic",
+      "scanned": false,
+      "vendor": "Apex Technologies Pvt Ltd",
+      "invoice_number": "APX/2026/1203",
+      "po_number": "PO-212",
+      "currency": "INR",
+      "total": "70800.00",
+      "expected": {
+        "decision": "NEEDS_REVIEW",
+        "rules": {
+          "R15": "REVIEW",
+          "R14": "FAIL"
+        }
+      }
+    },
+    {
+      "file": "invoices/14_multipage_keystone.pdf",
+      "title": "Multi-page invoice, 24 line items (valid)",
+      "run_order": 16,
+      "depends_on": null,
+      "layout": "classic",
+      "scanned": false,
+      "vendor": "Keystone Hardware Traders",
+      "invoice_number": "KHT-3390",
+      "po_number": "PO-450",
+      "currency": "INR",
+      "total": "175224.10",
+      "expected": {
+        "decision": "APPROVED",
+        "pages": ">=2"
+      }
+    },
+    {
+      "file": "invoices/15_tolerance_lumen.pdf",
+      "title": "Within 1% price tolerance and below PO value (valid)",
+      "run_order": 17,
+      "depends_on": null,
+      "layout": "modern",
+      "scanned": false,
+      "vendor": "Lumen Software Solutions Pvt Ltd",
+      "invoice_number": "LSS-8902",
+      "po_number": "PO-390",
+      "currency": "INR",
+      "total": "70505.00",
+      "expected": {
+        "decision": "APPROVED",
+        "rules": {
+          "R11": "PASS"
+        }
+      }
+    }
+  ]
+}

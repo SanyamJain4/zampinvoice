@@ -1,0 +1,14 @@
+vendor_id,legal_name,aliases,tax_id,country,approval_status
+V001,Apex Technologies Pvt Ltd,Apex Tech,27AABCA1111A1Z5,India,APPROVED
+V002,Bluewave Logistics Ltd,Bluewave Freight|BWL,29AABCB2222B1Z3,India,APPROVED
+V003,Cedar Office Supplies LLP,Cedar Stationers,07AABFC3333C1Z1,India,APPROVED
+V004,Delta Cloud Services Pvt Ltd,DeltaCloud,36AABCD4444D1Z9,India,APPROVED
+V005,Evergreen Facility Management Pvt Ltd,Evergreen FM,33AABCE5555E1Z7,India,APPROVED
+V006,Fusion Marketing Agency,Fusion Marketing,24AABCF6666F1Z5,India,APPROVED
+V007,Globex Industrial Parts Inc,Globex Industrial,94-3456789,United States,APPROVED
+V008,Horizon Consulting Group LLP,Horizon Consulting,19AABCH8888H1Z2,India,APPROVED
+V009,Indigo Print & Packaging Ltd,Indigo Packaging,27AABCI9999I1Z8,India,INACTIVE
+V010,Jupiter Security Systems Pvt Ltd,Jupiter Security,06AABCJ1010J1Z4,India,BLOCKED
+V011,Keystone Hardware Traders,Keystone Hardware,03AABCK1212K1Z6,India,APPROVED
+V012,Lumen Software Solutions Pvt Ltd,Lumen Software,29AABCL1313L1Z0,India,APPROVED
+V013,Apex Tech Solutions Pvt Ltd,,27AABCA1414A1Z1,India,APPROVED

@@ -1,0 +1,4 @@
+# Tests + synthetic sample-data generator
+-r requirements-ocr.txt
+reportlab==4.2.5
+pytest==8.3.4
